@@ -97,7 +97,7 @@ const over=()=>document.querySelectorAll('.card.over').forEach(x=>x.classList.re
 const cardAt=(x,y)=>{const t=document.elementFromPoint(x,y);return t&&t.closest('.card')};
 document.addEventListener('pointerdown',e=>{const c=e.target.closest('.chip');if(!c||e.button>0)return;drag={id:c.dataset.l,x:e.clientX,y:e.clientY,el:c,ghost:null};try{c.setPointerCapture(e.pointerId)}catch(_){}});
 document.addEventListener('pointermove',e=>{if(!drag)return;
- if(!drag.ghost){if(Math.hypot(e.clientX-drag.x,e.clientY-drag.y)<6)return;const g=drag.el.cloneNode(true);g.className='chip ghost';document.body.appendChild(g);drag.ghost=g;drag.el.classList.add('lifted')}
+ if(!drag.ghost){if(Math.hypot(e.clientX-drag.x,e.clientY-drag.y)<6)return;const g=drag.el.cloneNode(true);g.className='chip ghost';document.body.appendChild(g);drag.ghost=g;drag.el.classList.add('lifted');say('Soltala sobre el estadio del ciclo que le corresponde.')}
  drag.ghost.style.left=e.clientX+'px';drag.ghost.style.top=e.clientY+'px';
  over();const c=cardAt(e.clientX,e.clientY);if(c)c.classList.add('over')});
 const endDrag=(e,drop)=>{if(!drag)return;const d=drag;drag=null;if(!d.ghost)return;
@@ -131,7 +131,7 @@ document.addEventListener('click',e=>{
  if(a){if(a.dataset.r==='1'){ing[a.dataset.k]=true;$('#quiz').hidden=true;say(Q[a.dataset.k].ok,'ok');render()}
   else say('Esa respuesta no explica el ciclo. Pensá qué necesita el mosquito en esa etapa y probá de nuevo.','bad');return}
  const c=e.target.closest('.chip');
- if(c){sel=c.dataset.l;render();return}
+ if(c){sel=c.dataset.l;render();say('Elegiste “'+ST.find(x=>x.id===sel).name+'”. Arrastrala hasta el estadio del ciclo que le corresponde, o tocá ese estadio.');return}
  const d=e.target.closest('.card');
  if(d){const s=ST.find(x=>x.id===d.dataset.s);
   if(placed[s.id])return;
