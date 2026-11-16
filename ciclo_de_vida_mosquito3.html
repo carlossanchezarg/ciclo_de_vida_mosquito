@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>El ciclo del Aedes aegypti</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#eaf3f6;--card:#fff;--ink:#12303d;--mute:#52707d;--line:#b9d0d9;--accent:#0f7c8a;--ok:#2a7d46;--bad:#b4400f;--lock:#dde8ec;color-scheme:light dark}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1c22;--card:#17282f;--ink:#e4f0f4;--mute:#94b0bb;--line:#2e4650;--accent:#4cc3d1;--ok:#6fd08c;--bad:#ff9a6b;--lock:#1f333b;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f1c22;--card:#17282f;--ink:#e4f0f4;--mute:#94b0bb;--line:#2e4650;--accent:#4cc3d1;--ok:#6fd08c;--bad:#ff9a6b;--lock:#1f333b;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Avenir Next","Segoe UI",system-ui,sans-serif}
+main{max-width:860px;margin:0 auto;padding:20px 16px 32px}
+h1{font-size:1.7rem;line-height:1.2;margin:0 0 6px}
+.sub{color:var(--mute);margin:0 0 14px;max-width:62ch}
+.prog{height:10px;border-radius:6px;background:var(--lock);overflow:hidden}
+#bar{height:100%;width:0;background:var(--accent);transition:width .4s}
+#count{margin:6px 0 14px;font-size:.9rem;color:var(--mute)}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.ings{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px}
+.ing{padding:10px 14px;border-radius:10px;border:2px dashed var(--accent);background:var(--card);font-weight:600}
+.ing.got{border-style:solid;border-color:var(--ok);color:var(--ok)}
+#quiz{background:var(--card);border:2px solid var(--accent);border-radius:12px;padding:14px;margin-bottom:12px}
+#quiz p{margin:0 0 10px;font-weight:600}
+.opt{display:block;width:100%;text-align:left;padding:10px 12px;margin:6px 0;border-radius:8px;border:1px solid var(--line);background:var(--bg)}
+.opt:hover{border-color:var(--accent)}
+.bank{display:flex;flex-wrap:wrap;gap:8px;min-height:44px;margin-bottom:12px}
+.chip{padding:8px 16px;border-radius:999px;border:2px solid var(--accent);background:var(--card);font-weight:700;touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab}
+.chip.lifted{opacity:.35}
+.ghost{position:fixed;transform:translate(-50%,-50%);pointer-events:none;z-index:50;box-shadow:0 6px 16px rgba(0,0,0,.3);background:var(--accent);color:var(--card)}
+.chip.on{background:var(--accent);color:var(--card)}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 68px minmax(0,1fr);gap:8px;align-items:center}
+.arr{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:.72rem;line-height:1.2;color:var(--mute);text-align:center}
+.arr.v{flex-direction:row;gap:6px;padding:2px 0}
+.arr svg{width:34px;height:34px;flex:none}
+.arr.lit{color:var(--ok);font-weight:700}
+.card.over{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent)}
+.card{position:relative;padding:8px;border-radius:12px;border:2px solid var(--line);background:var(--card);text-align:center}
+.card svg{width:100%;height:auto;border-radius:8px;display:block}
+.card .t{display:block;margin-top:8px;font-size:.9rem;min-height:2.7em;color:var(--mute)}
+.card.lock{background:var(--lock)}
+.card.lock svg{filter:grayscale(1) opacity(.45)}
+.card.done{border-color:var(--ok)}
+.card.done .t{color:var(--ok);font-weight:700;font-size:1.05rem}
+.card.shake{animation:sh .35s}
+@keyframes sh{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+@media (prefers-reduced-motion:reduce){.card.shake{animation:none}#bar{transition:none}}
+#msg{min-height:3em;margin:14px 0 8px;font-weight:600}
+#msg.ok{color:var(--ok)}#msg.bad{color:var(--bad)}
+#reset{padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--card)}
+</style>
+</head>
+<body>
+<main>
+<h1>Completá el ciclo del <i>Aedes aegypti</i></h1>
+<p class="sub">Poné la etiqueta correcta a cada estadio. El ciclo no avanza solo: necesita ingredientes del ambiente, y te los ganás respondiendo.</p>
+<div class="prog"><div id="bar"></div></div>
+<p id="count"></p>
+<div class="ings">
+<button class="ing" id="b-lluvia" data-i="lluvia">🌧️ Lluvia</button>
+<button class="ing" id="b-calor" data-i="calor">🌡️ Temperatura agradable</button>
+</div>
+<div id="quiz" hidden></div>
+<div class="bank" id="bank"></div>
+<div class="grid" id="grid"></div>
+<p id="msg" role="status" aria-live="polite"></p>
+<button id="reset">Volver a empezar</button>
+</main>
+<script>
+const AIR='#f1efe6',WAT='#bfe0f2';
+const bg=(w)=>`<rect width="120" height="90" fill="${AIR}"/>`+(w?`<rect y="48" width="120" height="42" fill="${WAT}"/><path d="M0 48H120" stroke="#6aa7c4" stroke-width="1.5"/>`:'');
+const ST=[
+{id:'huevo',name:'Huevo',gate:null,after:null,
+ svg:`<svg viewBox="0 0 120 90" role="img" aria-label="Huevos sobre la pared de un recipiente">${bg(1)}<g fill="#2d2a26"><ellipse cx="20" cy="40" rx="4" ry="7"/><ellipse cx="36" cy="41" rx="4" ry="7"/><ellipse cx="52" cy="40" rx="4" ry="7"/><ellipse cx="68" cy="41" rx="4" ry="7"/><ellipse cx="84" cy="40" rx="4" ry="7"/><ellipse cx="100" cy="41" rx="4" ry="7"/></g></svg>`},
+{id:'larva',name:'Larva',gate:'lluvia',after:null,
+ svg:`<svg viewBox="0 0 120 90" role="img" aria-label="Larva nadando en el agua">${bg(1)}<path d="M32 66q8-13 16 0t16 0t16 0" fill="none" stroke="#7a5a3a" stroke-width="6" stroke-linecap="round"/><circle cx="28" cy="66" r="6.5" fill="#4a3320"/><path d="M82 66L88 47" stroke="#7a5a3a" stroke-width="2.5"/></svg>`},
+{id:'pupa',name:'Pupa',gate:null,after:'larva',
+ svg:`<svg viewBox="0 0 120 90" role="img" aria-label="Pupa en forma de coma">${bg(1)}<circle cx="52" cy="64" r="13" fill="#7a5a3a"/><path d="M62 72q20 2 26-14" fill="none" stroke="#7a5a3a" stroke-width="6" stroke-linecap="round"/><path d="M47 52l-3-8M56 52l3-8" stroke="#4a3320" stroke-width="2.5" stroke-linecap="round"/></svg>`},
+{id:'adulto',name:'Mosquito adulto',gate:'calor',after:'pupa',
+ svg:`<svg viewBox="0 0 120 90" role="img" aria-label="Mosquito adulto">${bg(0)}<ellipse cx="50" cy="34" rx="20" ry="7" fill="#7f9bb0" opacity=".6" transform="rotate(-22 50 34)"/><ellipse cx="58" cy="32" rx="20" ry="7" fill="#7f9bb0" opacity=".6" transform="rotate(10 58 32)"/><ellipse cx="66" cy="48" rx="24" ry="7" fill="#2d2a26"/><path d="M56 42v12M66 41v14M76 42v12" stroke="#fff" stroke-width="2"/><circle cx="40" cy="47" r="8" fill="#2d2a26"/><circle cx="29" cy="49" r="5" fill="#2d2a26"/><path d="M25 52L12 60" stroke="#2d2a26" stroke-width="2" stroke-linecap="round"/><path d="M42 54L34 74M50 55L50 77M60 55L68 76M76 53L92 70" stroke="#2d2a26" stroke-width="2" fill="none" stroke-linecap="round"/></svg>`}
+];
+const Q={
+lluvia:{q:'¿Para qué necesita agua de lluvia el ciclo del mosquito?',
+ o:[['Los huevos están pegados sobre la pared de un recipiente y eclosionan cuando el agua los cubre.',1],['Porque la lluvia transporta los huevos hasta las casas.',0],['Porque los huevos se alimentan del agua de lluvia.',0]],
+ ok:'¡Eso es! Con agua acumulada, los huevos eclosionan y nacen las larvas. Larva desbloqueada.'},
+calor:{q:'¿Por qué hacen falta temperaturas agradables, de templadas a cálidas?',
+ o:[['Con calor el desarrollo es más rápido y sobreviven más adultos; con frío se frena.',1],['Porque los mosquitos solo pican cuando hace frío.',0],['Porque el calor es lo que pone los huevos.',0]],
+ ok:'¡Exacto! Con temperaturas agradables el mosquito completa el ciclo hasta adulto. Mosquito adulto desbloqueado, en cuanto etiquetes la pupa.'}
+};
+const P={huevo:'1/1',larva:'1/3',pupa:'3/3',adulto:'3/1'};
+const AR=[['huevo','larva','eclosión',0,'1/2'],['larva','pupa','se transforma',90,'2/3'],['pupa','adulto','emerge',180,'3/2'],['adulto','huevo','pone huevos',270,'2/1']];
+let placed,ing,sel;
+let drag=null;
+const over=()=>document.querySelectorAll('.card.over').forEach(x=>x.classList.remove('over'));
+const cardAt=(x,y)=>{const t=document.elementFromPoint(x,y);return t&&t.closest('.card')};
+document.addEventListener('pointerdown',e=>{const c=e.target.closest('.chip');if(!c||e.button>0)return;drag={id:c.dataset.l,x:e.clientX,y:e.clientY,el:c,ghost:null};try{c.setPointerCapture(e.pointerId)}catch(_){}});
+document.addEventListener('pointermove',e=>{if(!drag)return;
+ if(!drag.ghost){if(Math.hypot(e.clientX-drag.x,e.clientY-drag.y)<6)return;const g=drag.el.cloneNode(true);g.className='chip ghost';document.body.appendChild(g);drag.ghost=g;drag.el.classList.add('lifted');say('Soltala sobre el estadio del ciclo que le corresponde.')}
+ drag.ghost.style.left=e.clientX+'px';drag.ghost.style.top=e.clientY+'px';
+ over();const c=cardAt(e.clientX,e.clientY);if(c)c.classList.add('over')});
+const endDrag=(e,drop)=>{if(!drag)return;const d=drag;drag=null;if(!d.ghost)return;
+ d.ghost.remove();over();
+ const c=drop&&cardAt(e.clientX,e.clientY);
+ if(c){sel=d.id;c.click();render()}else{d.el.classList.remove('lifted');if(drop)say('Soltá la etiqueta sobre un estadio.','bad')}};
+document.addEventListener('pointerup',e=>endDrag(e,true));
+document.addEventListener('pointercancel',e=>endDrag(e,false));
+const $=s=>document.querySelector(s);
+const say=(t,c)=>{const m=$('#msg');m.textContent=t;m.className=c||''};
+const locked=s=>(s.gate&&!ing[s.gate])||(s.after&&!placed[s.after]);
+const need=s=>{if(s.after&&!placed[s.after])return 'Primero etiquetá la '+s.after;if(s.gate&&!ing[s.gate])return s.gate==='lluvia'?'Necesita lluvia':'Necesita temperatura agradable';return ''};
+function start(){placed={};ing={};sel=null;$('#quiz').hidden=true;say('Arrastrá cada etiqueta hasta su estadio. También podés elegirla y tocar el estadio.');render()}
+function render(){
+ const n=Object.keys(placed).length;
+ $('#bar').style.width=n*25+'%';
+ $('#count').textContent=n+' de 4 estadios etiquetados';
+ $('#b-lluvia').className='ing'+(ing.lluvia?' got':'');$('#b-calor').className='ing'+(ing.calor?' got':'');
+ $('#b-lluvia').textContent=(ing.lluvia?'✓ ':'🌧️ ')+'Lluvia';
+ $('#b-calor').textContent=(ing.calor?'✓ ':'🌡️ ')+'Temperatura agradable';
+ $('#bank').innerHTML=ST.filter(s=>!placed[s.id]).map(s=>`<button class="chip${sel===s.id?' on':''}" data-l="${s.id}">${s.name}</button>`).join('');
+ $('#grid').innerHTML=ST.map(s=>{const lk=locked(s);return `<button class="card${lk?' lock':''}${placed[s.id]?' done':''}" style="grid-area:${P[s.id]}" data-s="${s.id}">${s.svg}<span class="t">${placed[s.id]?s.name:(lk?'🔒 '+need(s):'¿Qué estadio es?')}</span></button>`}).join('')+AR.map(a=>`<div class="arr${a[3]%180?' v':''}${placed[a[0]]&&placed[a[1]]?' lit':''}" style="grid-area:${a[4]}" aria-hidden="true"><svg viewBox="0 0 40 40" style="transform:rotate(${a[3]}deg)"><path d="M5 20H33M24 10l10 10-10 10" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>${a[2]}</span></div>`).join('');
+}
+document.addEventListener('click',e=>{
+ const i=e.target.closest('[data-i]');
+ if(i){const k=i.dataset.i;if(ing[k]){say('Ese ingrediente ya lo tenés.');return}
+  const q=Q[k],o=q.o.map(x=>x).sort(()=>Math.random()-.5);
+  const z=$('#quiz');z.hidden=false;
+  z.innerHTML=`<p>${q.q}</p>`+o.map((x,j)=>`<button class="opt" data-k="${k}" data-r="${x[1]}">${x[0]}</button>`).join('');return}
+ const a=e.target.closest('.opt');
+ if(a){if(a.dataset.r==='1'){ing[a.dataset.k]=true;$('#quiz').hidden=true;say(Q[a.dataset.k].ok,'ok');render()}
+  else say('Esa respuesta no explica el ciclo. Pensá qué necesita el mosquito en esa etapa y probá de nuevo.','bad');return}
+ const c=e.target.closest('.chip');
+ if(c){sel=c.dataset.l;render();say('Elegiste “'+ST.find(x=>x.id===sel).name+'”. Arrastrala hasta el estadio del ciclo que le corresponde, o tocá ese estadio.');return}
+ const d=e.target.closest('.card');
+ if(d){const s=ST.find(x=>x.id===d.dataset.s);
+  if(placed[s.id])return;
+  if(locked(s)){d.classList.add('shake');say('Todavía no. '+need(s)+'.','bad');return}
+  if(!sel){say('Primero elegí una etiqueta de arriba.','bad');return}
+  if(sel!==s.id){d.classList.add('shake');say('Esa no es la etiqueta de este estadio. Fijate en la forma.','bad');return}
+  placed[s.id]=true;sel=null;render();
+  if(Object.keys(placed).length===4)say('¡Ciclo completo! Recordá: solo la hembra adulta pica. Si pica a una persona con dengue y, unos días después, a otra, transmite el virus: eso es transmisión vectorial.','ok');
+  else say('¡Bien! '+s.name+' etiquetado.','ok');return}
+ if(e.target.id==='reset')start();
+});
+start();
+</script>
+</body>
+</html>
