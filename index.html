@@ -27,9 +27,16 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .opt{display:block;width:100%;text-align:left;padding:10px 12px;margin:6px 0;border-radius:8px;border:1px solid var(--line);background:var(--bg)}
 .opt:hover{border-color:var(--accent)}
 .bank{display:flex;flex-wrap:wrap;gap:8px;min-height:44px;margin-bottom:12px}
-.chip{padding:8px 16px;border-radius:999px;border:2px solid var(--accent);background:var(--card);font-weight:700}
+.chip{padding:8px 16px;border-radius:999px;border:2px solid var(--accent);background:var(--card);font-weight:700;touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab}
+.chip.lifted{opacity:.35}
+.ghost{position:fixed;transform:translate(-50%,-50%);pointer-events:none;z-index:50;box-shadow:0 6px 16px rgba(0,0,0,.3);background:var(--accent);color:var(--card)}
 .chip.on{background:var(--accent);color:var(--card)}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 68px minmax(0,1fr);gap:8px;align-items:center}
+.arr{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:.72rem;line-height:1.2;color:var(--mute);text-align:center}
+.arr.v{flex-direction:row;gap:6px;padding:2px 0}
+.arr svg{width:34px;height:34px;flex:none}
+.arr.lit{color:var(--ok);font-weight:700}
+.card.over{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent)}
 .card{position:relative;padding:8px;border-radius:12px;border:2px solid var(--line);background:var(--card);text-align:center}
 .card svg{width:100%;height:auto;border-radius:8px;display:block}
 .card .t{display:block;margin-top:8px;font-size:.9rem;min-height:2.7em;color:var(--mute)}
@@ -82,12 +89,28 @@ calor:{q:'¿Por qué hacen falta temperaturas agradables, de templadas a cálida
  o:[['Con calor el desarrollo es más rápido y sobreviven más adultos; con frío se frena.',1],['Porque los mosquitos solo pican cuando hace frío.',0],['Porque el calor es lo que pone los huevos.',0]],
  ok:'¡Exacto! Con temperaturas agradables el mosquito completa el ciclo hasta adulto. Mosquito adulto desbloqueado, en cuanto etiquetes la pupa.'}
 };
+const P={huevo:'1/1',larva:'1/3',pupa:'3/3',adulto:'3/1'};
+const AR=[['huevo','larva','eclosión',0,'1/2'],['larva','pupa','se transforma',90,'2/3'],['pupa','adulto','emerge',180,'3/2'],['adulto','huevo','pone huevos',270,'2/1']];
 let placed,ing,sel;
+let drag=null;
+const over=()=>document.querySelectorAll('.card.over').forEach(x=>x.classList.remove('over'));
+const cardAt=(x,y)=>{const t=document.elementFromPoint(x,y);return t&&t.closest('.card')};
+document.addEventListener('pointerdown',e=>{const c=e.target.closest('.chip');if(!c||e.button>0)return;drag={id:c.dataset.l,x:e.clientX,y:e.clientY,el:c,ghost:null};try{c.setPointerCapture(e.pointerId)}catch(_){}});
+document.addEventListener('pointermove',e=>{if(!drag)return;
+ if(!drag.ghost){if(Math.hypot(e.clientX-drag.x,e.clientY-drag.y)<6)return;const g=drag.el.cloneNode(true);g.className='chip ghost';document.body.appendChild(g);drag.ghost=g;drag.el.classList.add('lifted')}
+ drag.ghost.style.left=e.clientX+'px';drag.ghost.style.top=e.clientY+'px';
+ over();const c=cardAt(e.clientX,e.clientY);if(c)c.classList.add('over')});
+const endDrag=(e,drop)=>{if(!drag)return;const d=drag;drag=null;if(!d.ghost)return;
+ d.ghost.remove();over();
+ const c=drop&&cardAt(e.clientX,e.clientY);
+ if(c){sel=d.id;c.click();render()}else{d.el.classList.remove('lifted');if(drop)say('Soltá la etiqueta sobre un estadio.','bad')}};
+document.addEventListener('pointerup',e=>endDrag(e,true));
+document.addEventListener('pointercancel',e=>endDrag(e,false));
 const $=s=>document.querySelector(s);
 const say=(t,c)=>{const m=$('#msg');m.textContent=t;m.className=c||''};
 const locked=s=>(s.gate&&!ing[s.gate])||(s.after&&!placed[s.after]);
 const need=s=>{if(s.after&&!placed[s.after])return 'Primero etiquetá la '+s.after;if(s.gate&&!ing[s.gate])return s.gate==='lluvia'?'Necesita lluvia':'Necesita temperatura agradable';return ''};
-function start(){placed={};ing={};sel=null;$('#quiz').hidden=true;say('Elegí una etiqueta y tocá el estadio que le corresponde.');render()}
+function start(){placed={};ing={};sel=null;$('#quiz').hidden=true;say('Arrastrá cada etiqueta hasta su estadio. También podés elegirla y tocar el estadio.');render()}
 function render(){
  const n=Object.keys(placed).length;
  $('#bar').style.width=n*25+'%';
@@ -96,7 +119,7 @@ function render(){
  $('#b-lluvia').textContent=(ing.lluvia?'✓ ':'🌧️ ')+'Lluvia';
  $('#b-calor').textContent=(ing.calor?'✓ ':'🌡️ ')+'Temperatura agradable';
  $('#bank').innerHTML=ST.filter(s=>!placed[s.id]).map(s=>`<button class="chip${sel===s.id?' on':''}" data-l="${s.id}">${s.name}</button>`).join('');
- $('#grid').innerHTML=ST.map(s=>{const lk=locked(s);return `<button class="card${lk?' lock':''}${placed[s.id]?' done':''}" data-s="${s.id}">${s.svg}<span class="t">${placed[s.id]?s.name:(lk?'🔒 '+need(s):'¿Qué estadio es?')}</span></button>`}).join('');
+ $('#grid').innerHTML=ST.map(s=>{const lk=locked(s);return `<button class="card${lk?' lock':''}${placed[s.id]?' done':''}" style="grid-area:${P[s.id]}" data-s="${s.id}">${s.svg}<span class="t">${placed[s.id]?s.name:(lk?'🔒 '+need(s):'¿Qué estadio es?')}</span></button>`}).join('')+AR.map(a=>`<div class="arr${a[3]%180?' v':''}${placed[a[0]]&&placed[a[1]]?' lit':''}" style="grid-area:${a[4]}" aria-hidden="true"><svg viewBox="0 0 40 40" style="transform:rotate(${a[3]}deg)"><path d="M5 20H33M24 10l10 10-10 10" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>${a[2]}</span></div>`).join('');
 }
 document.addEventListener('click',e=>{
  const i=e.target.closest('[data-i]');
