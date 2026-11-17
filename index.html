@@ -55,12 +55,13 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 <body>
 <main>
 <h1>Completá el ciclo del <i>Aedes aegypti</i></h1>
-<p class="sub">Poné la etiqueta correcta a cada estadio. El ciclo no avanza solo: necesita ingredientes del ambiente, y te los ganás respondiendo.</p>
+<p class="sub">Poné la etiqueta correcta a cada estadio. El ciclo no avanza solo: necesita ingredientes (agua, calor y sangre), y te los ganás respondiendo.</p>
 <div class="prog"><div id="bar"></div></div>
 <p id="count"></p>
 <div class="ings">
 <button class="ing" id="b-lluvia" data-i="lluvia">🌧️ Lluvia</button>
 <button class="ing" id="b-calor" data-i="calor">🌡️ Temperatura agradable</button>
+<button class="ing" id="b-sangre" data-i="sangre">🩸 Sangre humana</button>
 </div>
 <div id="quiz" hidden></div>
 <div class="bank" id="bank"></div>
@@ -87,10 +88,15 @@ lluvia:{q:'¿Para qué necesita agua de lluvia el ciclo del mosquito?',
  ok:'¡Eso es! Con agua acumulada, los huevos eclosionan y nacen las larvas. Larva desbloqueada.'},
 calor:{q:'¿Por qué hacen falta temperaturas agradables, de templadas a cálidas?',
  o:[['Con calor el desarrollo es más rápido y sobreviven más adultos; con frío se frena.',1],['Porque los mosquitos solo pican cuando hace frío.',0],['Porque el calor es lo que pone los huevos.',0]],
- ok:'¡Exacto! Con temperaturas agradables el mosquito completa el ciclo hasta adulto. Mosquito adulto desbloqueado, en cuanto etiquetes la pupa.'}
+ ok:'¡Exacto! Con temperaturas agradables el mosquito completa el ciclo hasta adulto. Mosquito adulto desbloqueado, en cuanto etiquetes la pupa.'},
+sangre:{q:'¿Por qué la hembra necesita sangre antes de poner huevos?',
+ o:[['Las hembras necesitan proteínas de la sangre para que se desarrollen los huevos. El Aedes aegypti prefiere picar a las personas y vive cerca de las casas.',1],['Porque los machos se alimentan de sangre y las hembras de néctar.',0],['Porque la sangre le da el agua que necesita para poner los huevos.',0]],
+ ok:'¡Eso es! Con la sangre la hembra puede desarrollar los huevos, y por eso pica, sobre todo a las personas. Ahora el ciclo puede cerrarse.'}
 };
 const P={huevo:'1/1',larva:'1/3',pupa:'3/3',adulto:'3/1'};
-const AR=[['huevo','larva','eclosión',0,'1/2'],['larva','pupa','se transforma',90,'2/3'],['pupa','adulto','emerge',180,'3/2'],['adulto','huevo','pone huevos',270,'2/1']];
+const AR=[['huevo','larva','eclosión',0,'1/2'],['larva','pupa','se transforma',90,'2/3'],['pupa','adulto','emerge',180,'3/2'],['adulto','huevo','pone huevos',270,'2/1','sangre']];
+const FIN='¡Ciclo completo! La hembra se alimenta de sangre, sobre todo humana, y después pone huevos. Recordá: solo la hembra pica. Si pica a una persona con dengue y, unos días después, a otra, transmite el virus: eso es transmisión vectorial.';
+const FALTA='Etiquetaste los cuatro estadios, pero el ciclo todavía no se cierra: ¿qué necesita la hembra adulta antes de poner huevos? Ganate el ingrediente de sangre.';
 let placed,ing,sel;
 let drag=null;
 const over=()=>document.querySelectorAll('.card.over').forEach(x=>x.classList.remove('over'));
@@ -117,9 +123,9 @@ function render(){
  $('#count').textContent=n+' de 4 estadios etiquetados';
  $('#b-lluvia').className='ing'+(ing.lluvia?' got':'');$('#b-calor').className='ing'+(ing.calor?' got':'');
  $('#b-lluvia').textContent=(ing.lluvia?'✓ ':'🌧️ ')+'Lluvia';
- $('#b-calor').textContent=(ing.calor?'✓ ':'🌡️ ')+'Temperatura agradable';
+ $('#b-calor').textContent=(ing.calor?'✓ ':'🌡️ ')+'Temperatura agradable';$('#b-sangre').className='ing'+(ing.sangre?' got':'');$('#b-sangre').textContent=(ing.sangre?'✓ ':'🩸 ')+'Sangre humana';
  $('#bank').innerHTML=ST.filter(s=>!placed[s.id]).map(s=>`<button class="chip${sel===s.id?' on':''}" data-l="${s.id}">${s.name}</button>`).join('');
- $('#grid').innerHTML=ST.map(s=>{const lk=locked(s);return `<button class="card${lk?' lock':''}${placed[s.id]?' done':''}" style="grid-area:${P[s.id]}" data-s="${s.id}">${s.svg}<span class="t">${placed[s.id]?s.name:(lk?'🔒 '+need(s):'¿Qué estadio es?')}</span></button>`}).join('')+AR.map(a=>`<div class="arr${a[3]%180?' v':''}${placed[a[0]]&&placed[a[1]]?' lit':''}" style="grid-area:${a[4]}" aria-hidden="true"><svg viewBox="0 0 40 40" style="transform:rotate(${a[3]}deg)"><path d="M5 20H33M24 10l10 10-10 10" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>${a[2]}</span></div>`).join('');
+ $('#grid').innerHTML=ST.map(s=>{const lk=locked(s);return `<button class="card${lk?' lock':''}${placed[s.id]?' done':''}" style="grid-area:${P[s.id]}" data-s="${s.id}">${s.svg}<span class="t">${placed[s.id]?s.name:(lk?'🔒 '+need(s):'¿Qué estadio es?')}</span></button>`}).join('')+AR.map(a=>`<div class="arr${a[3]%180?' v':''}${placed[a[0]]&&placed[a[1]]&&(!a[5]||ing[a[5]])?' lit':''}" style="grid-area:${a[4]}" aria-hidden="true"><svg viewBox="0 0 40 40" style="transform:rotate(${a[3]}deg)"><path d="M5 20H33M24 10l10 10-10 10" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg><span>${a[5]&&!ing[a[5]]?'🔒 '+a[2]+': necesita sangre':a[2]}</span></div>`).join('');
 }
 document.addEventListener('click',e=>{
  const i=e.target.closest('[data-i]');
@@ -128,7 +134,7 @@ document.addEventListener('click',e=>{
   const z=$('#quiz');z.hidden=false;
   z.innerHTML=`<p>${q.q}</p>`+o.map((x,j)=>`<button class="opt" data-k="${k}" data-r="${x[1]}">${x[0]}</button>`).join('');return}
  const a=e.target.closest('.opt');
- if(a){if(a.dataset.r==='1'){ing[a.dataset.k]=true;$('#quiz').hidden=true;say(Q[a.dataset.k].ok,'ok');render()}
+ if(a){if(a.dataset.r==='1'){ing[a.dataset.k]=true;$('#quiz').hidden=true;say(Q[a.dataset.k].ok,'ok');render();if(a.dataset.k==='sangre'&&Object.keys(placed).length===4)say(FIN,'ok')}
   else say('Esa respuesta no explica el ciclo. Pensá qué necesita el mosquito en esa etapa y probá de nuevo.','bad');return}
  const c=e.target.closest('.chip');
  if(c){sel=c.dataset.l;render();say('Elegiste “'+ST.find(x=>x.id===sel).name+'”. Arrastrala hasta el estadio del ciclo que le corresponde, o tocá ese estadio.');return}
@@ -139,7 +145,7 @@ document.addEventListener('click',e=>{
   if(!sel){say('Primero elegí una etiqueta de arriba.','bad');return}
   if(sel!==s.id){d.classList.add('shake');say('Esa no es la etiqueta de este estadio. Fijate en la forma.','bad');return}
   placed[s.id]=true;sel=null;render();
-  if(Object.keys(placed).length===4)say('¡Ciclo completo! Recordá: solo la hembra adulta pica. Si pica a una persona con dengue y, unos días después, a otra, transmite el virus: eso es transmisión vectorial.','ok');
+  if(Object.keys(placed).length===4)say(ing.sangre?FIN:FALTA,'ok');
   else say('¡Bien! '+s.name+' etiquetado.','ok');return}
  if(e.target.id==='reset')start();
 });
